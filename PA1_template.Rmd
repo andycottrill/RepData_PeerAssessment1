@@ -1,25 +1,143 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+This is my Assignment for Reproducible Research written as a R Markdown file
+=========================
+
+```{r setoptions, echo=TRUE}
+```
+1. Code for reading in the dataset and/or processing the data
 
 
-## Loading and preprocessing the data
+Set working directory, load some data (Motion data - data downloaded on the 21/03/2017)
+Step 1: Download the file (copy from dowload directory to Coursera), Set directory.
+Step 2: Unzip the File and make new folder called Movement
+Step 3: Read and look at the data format and check there are 3 variables (steps, date and interval) with 17,568 observations.
+Step 4: Load the knitr and dplyr packages
+
+```{r}
+setwd("C:/Users/default.TOSHIBA/Desktop/Coursera")
+unzip(zipfile="C:/Users/default.TOSHIBA/Desktop/Coursera/repdata_data_activity.zip",exdir="C:/Users/default.TOSHIBA/Desktop/Coursera/Movement")
+data <- read.csv("C:/Users/default.TOSHIBA/Desktop/Coursera/Movement/activity.csv",header=T,sep=",", na.strings ="NA") 
+summary(data)
+head(data)
+tail(data)
+dim(data)
+library(knitr)
+library(dplyr)
+opts_chunk$set(echo = TRUE)
+```
+This shows there are 17,568 observationswith NA values in the steps column
+
+We can ignore the missing values in the dataset, as mentioned in assignment blurb. Could also use complete.cases function
+
+```{r}
+data2 <- na.omit(data)
+summary(data2)
+head(data2)
+tail(data2)
+dim(data2)
+```
+Use the function aggregate or group_by to sum the steps per day
+
+```{r}
+stepsperday <- aggregate(steps ~ date, data2, sum)
+head(stepsperday,20)
+tail(stepsperday,20)
+dim(stepsperday)
+```
+2. Now plot a Histogram of the number of steps taken each day
+
+```{r}
+hist(stepsperday$steps, col="red", xlab="Number of Steps per Day", main="Histogram of the Number of Steps per Day")
+```
+3. Calculate the mean and median number of steps taken each day
+
+```{r}
+mean(stepsperday$steps)
+median(stepsperday$steps)
+```
+This shows the mean is 10766 and the median is 10765 steps
+
+Now calculate the mean number of steps per interval (similar to above)
+
+```{r}
+stepsperinterval <- aggregate(steps ~ interval, data2, mean)
+head(stepsperinterval,20)
+tail(stepsperinterval,20)
+dim(stepsperinterval)
+stepsperinterval
+```
+4. Plot a time series of the average number of steps taken per interval for all days
+
+```{r}
+plot(stepsperinterval$interval, stepsperinterval$steps, type='l', col="red", 
+     main="Average number of steps for each interval over 53 days", xlab="Interval", 
+     ylab="Average number of steps")
+```
+
+5. Find the 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+maxstepsinterval <- which.max(stepsperinterval$steps)
+stepsperinterval[maxstepsinterval,]
+```
+So the interval 835 has the maxiumum number of 206 steps
+
+6. Code to describe and show a strategy for imputing missing data
+The number of missing values (NAs)
+
+```{r}
+sum(is.na(data))
+```
+The total number of rows with Nas is 2304
+
+Fill in missing data values----use the mean for that 5-minute interval
+Create new dataset 
+Loop through the rows of data, find the NA in steps and corresponding interval, 
+Identify the mean number of steps for that interval and replace the NA value with the mean value
+```{r}
+for (i in 1:nrow(data)) {
+    if(is.na(data$steps[i])) {
+        newdata <- stepsperinterval$steps[which(stepsperinterval$interval == data$interval[i])]
+        data$steps[i] <- newdata 
+    }
+}
+```
+
+7. Now sum up the total number of steps per day and plot histogram after missing values are imputed
+```{r}
+stepsperdayimpute <- aggregate(steps ~ date, data, sum)
+head(stepsperdayimpute)
+hist(stepsperdayimpute$steps, xlab = "Number of Steps per Day", main = "Histogram of the Number of Steps per Day (Imputed)")
+```
+Calculate the mean and median number of steps
+
+```{r}
+mean(stepsperdayimpute$steps)
+median(stepsperdayimpute$steps)
+```
+The mean is 10766 and the median is 10766. The values have not changed significantly as expected
+
+8. Make a Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+Use the weekday() function and the dataset with the filled-in missing values first.
+
+```{r}
+data['typeofday'] <- weekdays(as.Date(data$date))
+data$typeofday[data$typeofday  %in% c('Saturday','Sunday') ] <- "weekend"
+data$typeofday[data$typeofday != "weekend"] <- "weekday"
+head(data,20)
+tail(data,60)
+
+data$typeofday <- as.factor(data$typeofday)
+dataImputestepsbyinterval <- aggregate(steps ~ interval + typeofday, data, mean)
+```
+8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r}
+library(ggplot2)
+qplot(interval, steps, data=dataImputestepsbyinterval, geom=c("line"), xlab="Interval", 
+      ylab="Number of steps", main="") + facet_wrap(~ typeofday, ncol=1)
+```
+
+9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
 
 
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
